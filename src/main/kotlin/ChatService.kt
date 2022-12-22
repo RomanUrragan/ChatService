@@ -1,8 +1,8 @@
 object ChatService {
     var messages: List<Message> = mutableListOf()
-    var chats: List<Chat> = mutableListOf()
+    var chats: MutableList<Chat> = mutableListOf()
 
-    fun clear(){
+    fun clear() {
         messages = mutableListOf()
         chats = mutableListOf()
         nextMessageId = 1
@@ -18,8 +18,10 @@ object ChatService {
 
     //возвращает чат между двумя пользователями
     fun getChat(firstUserId: Int, secondUserId: Int): Chat? {
-        return chats.find { (it.firstUserId == firstUserId || it.firstUserId == secondUserId) &&
-                (it.secondUserId == firstUserId || it.secondUserId == secondUserId) }
+        return chats.find {
+            (it.firstUserId == firstUserId || it.firstUserId == secondUserId) &&
+                    (it.secondUserId == firstUserId || it.secondUserId == secondUserId)
+        }
     }
 
     //удаляет чат
@@ -30,49 +32,29 @@ object ChatService {
     }
 
     //возвращает список чатов. Если чатов нет, то выбрасывает ошибку "нет сообщений"
-    fun getChats(UserId: Int): List<Chat> {
-        var foundChats = chats.filter { it.firstUserId == UserId || it.secondUserId == UserId }
-        return foundChats.ifEmpty {
-            throw ChatNotFoundException("Нет сообщений")
-        }
+    fun getChats(UserId: Int) = chats.filter { it.firstUserId == UserId || it.secondUserId == UserId }.ifEmpty {
+        throw ChatNotFoundException("Нет чатов")
     }
+
+    //Возвращает список последних сообщений в чатах
+    fun getLastMessages(UserId: Int) = chats.filter { it.firstUserId == UserId || it.secondUserId == UserId }.map{chat -> chat.messages.last()}.ifEmpty {
+            throw ChatNotFoundException("Нет сообщений")
+    }
+
 
     //возвращает список сообщений в чате(id чата, id последнего сообшения, кол-во сообщений. Отданные сообщения = прочитаны
     fun getChatMessages(chatId: Int, lastMessageId: Int, count: Int): List<Message> {
-        var foundChat = chats.filter { it.id == chatId }
-        if (foundChat.isEmpty()) {
-            throw ChatNotFoundException("Чата с таким id не существует")
-        } else {
-            var chat: Chat = foundChat.first()
-            var messages = chat.messages
-                .sortedBy() { it.id }
-                .filter { it.id >= lastMessageId }
-                .filterIndexed { index, _ -> index < count }
-            if (messages.isEmpty()) {
-                throw MessageNotFoundException("Введен неверный id сообщения")
-            }
-            for (message in messages) {
-                message.isRead = true
-            }
-            return messages
-        }
+        var chat = chats.find { it.id == chatId } ?: throw ChatNotFoundException("Чата с таким id не существует")
+        return chat.messages
+            .sortedBy() { it.id }
+            .filter { it.id >= lastMessageId }
+            .ifEmpty { throw MessageNotFoundException("Введен неверный id сообщения") }
+            .take(count)
+            .onEach { it.isRead = true }
     }
 
     //возвращает количество непрочитанных чатов (имеют непрочитанное сообщение)
-    fun getUnreadChatsCount(userId: Int): Int {
-        var count = 0
-        var userChats = getChats(userId)
-        for (chat in userChats) {
-            for (message in chat.messages) {
-                if (!message.isRead) {
-                    count++
-                    break
-                }
-
-            }
-        }
-        return count
-    }
+    fun getUnreadChatsCount(userId: Int) = getChats(userId).count { chat -> chat.messages.any { !it.isRead } }
 
     //создает сообщение и возвращает его
     fun createMessage(fromUserId: Int, toUserId: Int, text: String): Message {
@@ -86,15 +68,18 @@ object ChatService {
 
     //редактирует сообщение
     fun editMessage(messageId: Int, text: String) {
-        var message = messages.find { it.id == messageId } ?: throw MessageNotFoundException("Сообщения с таким id не существует")
+        var message =
+            messages.find { it.id == messageId }
+                ?: throw MessageNotFoundException("Сообщения с таким id не существует")
         message.text = text
     }
 
     //удаляет сообщение. При удалении последнего сообщения в чате весь чат удаляется.
-    fun deleteMessage(messageId : Int) {
-        var message = messages.find() {it.id == messageId} ?: throw MessageNotFoundException("Сообщения с таким id не существует")
+    fun deleteMessage(messageId: Int) {
+        var message = messages.find() { it.id == messageId }
+            ?: throw MessageNotFoundException("Сообщения с таким id не существует")
         messages -= message
-        var chat = getChat(message.fromUserId, message.toUserId)?: throw ChatNotFoundException("Чат не найден")
+        var chat = getChat(message.fromUserId, message.toUserId) ?: throw ChatNotFoundException("Чат не найден")
         chat.messages -= message
         if (chat.messages.isEmpty()) {
             chats -= chat

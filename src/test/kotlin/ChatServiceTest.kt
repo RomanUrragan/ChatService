@@ -10,6 +10,21 @@ class ChatServiceTest(){
     }
 
     @Test
+    fun getLastMessagesTest(){
+        val mes1 = ChatService.createMessage(100, 200, "text1")
+        val mes2 = ChatService.createMessage(200, 100, "text2")
+        val mes3 = ChatService.createMessage(100, 300, "text3")
+        val mes4 = ChatService.createMessage(100, 400, "text4")
+        val listOfMes = ChatService.getLastMessages(100)
+        assertTrue(!listOfMes.contains(mes1) && listOfMes.contains(mes2) && listOfMes.contains(mes3) && listOfMes.contains(mes4))
+    }
+
+    @Test(expected = ChatNotFoundException::class)
+    fun getLastMessageTestThrowException(){
+        val chats = ChatService.getLastMessages(100)
+    }
+
+    @Test
     fun createChatTest(){
         var chat = ChatService.createChat(0, 1)
         assertTrue(ChatService.chats.contains(chat))
@@ -50,7 +65,7 @@ class ChatServiceTest(){
 
     @Test(expected = ChatNotFoundException::class)
     fun getChatsTestThrowException(){
-        val chats = ChatService.getChats(100).sortedBy { it.id }
+        val chats = ChatService.getChats(100)
     }
 
     @Test
